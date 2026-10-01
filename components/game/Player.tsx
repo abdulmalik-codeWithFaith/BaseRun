@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Group, MathUtils } from "three";
 import Bicycle from "./Bicycle";
+import { useGameStore } from "@/store/useGameStore";
 import { runtime } from "@/game/runtime";
 import { LANES, LANE_DAMP } from "@/game/constants";
 
@@ -13,15 +14,26 @@ export default function Player() {
 
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.05);
+    const crashed = useGameStore.getState().status === "gameover";
+    const l = lean.current;
+    if (!l) return;
+
+    if (crashed) {
+      // freeze lateral motion and tip over to the side we were hit from
+      l.rotation.z = MathUtils.damp(l.rotation.z, runtime.crashSide * 1.45, 8, dt);
+      l.rotation.y = MathUtils.damp(l.rotation.y, runtime.crashSide * 0.5, 6, dt);
+      l.position.y = MathUtils.damp(l.position.y, 0.35, 8, dt);
+      return;
+    }
+
     const target = LANES[runtime.lane];
     runtime.playerX = MathUtils.damp(runtime.playerX, target, LANE_DAMP, dt);
-
     const diff = target - runtime.playerX; // negative when moving left
+
     if (root.current) root.current.position.x = runtime.playerX;
-    if (lean.current) {
-      lean.current.rotation.z = MathUtils.clamp(-diff * 0.18, -0.35, 0.35); // lean into turn
-      lean.current.rotation.y = MathUtils.clamp(-diff * 0.12, -0.3, 0.3);   // point toward turn
-    }
+    l.position.y = 0;
+    l.rotation.z = MathUtils.clamp(-diff * 0.18, -0.35, 0.35); // lean into turn
+    l.rotation.y = MathUtils.clamp(-diff * 0.12, -0.3, 0.3);   // point toward turn
   });
 
   return (

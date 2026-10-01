@@ -2,6 +2,9 @@
 
 import { Canvas } from "@react-three/fiber";
 import GameLoop from "./GameLoop";
+import WorldSystem from "./WorldSystem";
+import ObstacleField from "./ObstacleField";
+import CoinField from "./CoinField";
 import Player from "./Player";
 import CameraRig from "./CameraRig";
 import Road from "./Road";
@@ -19,6 +22,9 @@ export default function GameCanvas() {
       <directionalLight position={[5, 10, 5]} intensity={1.3} />
 
       <GameLoop />
+      <WorldSystem />
+      <ObstacleField />
+      <CoinField />
       <Player />
       <CameraRig />
       <Road />

@@ -26,8 +26,8 @@ export function useLaneControls() {
         case "KeyD":
           move(1);
           break;
-        case "Escape": // TEMP: lets you get back to the menu while testing
-          useGameStore.getState().goMenu();
+        case "Escape": // TEMP until Step 4's pause screen
+          useGameStore.getState().endRun();
           break;
       }
     };

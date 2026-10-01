@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { useLaneControls } from "@/game/useLaneControls";
 import { useGameStore } from "@/store/useGameStore";
+import DebugHud from "@/components/ui/DebugHud";
 import MainMenu from "@/components/ui/MainMenu";
 
 const GameCanvas = dynamic(() => import("@/components/game/GameCanvas"), {
@@ -33,7 +34,7 @@ export default function GameShell() {
     <main className="relative h-dvh w-screen overflow-hidden touch-none select-none">
       <GameCanvas />
       {status === "menu" && <MainMenu />}
-      {/* Step 4: HUD + GameOver overlays go here */}
+      {status !== "menu" && <DebugHud />}
     </main>
   );
 }
