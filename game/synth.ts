@@ -1,6 +1,5 @@
-export type SfxName = "coin" | "crash" | "click" | "swoosh" | "tick" | "go";
-export const SFX_NAMES: SfxName[] = ["coin", "crash", "click", "swoosh", "tick", "go"];
-
+export type SfxName = "coin" | "crash" | "click" | "swoosh" | "tick" | "go" | "jump";
+export const SFX_NAMES: SfxName[] = ["coin", "crash", "click", "swoosh", "tick", "go", "jump"];
 const RATE = 22050;
 const TAU = Math.PI * 2;
 type Wave = "sine" | "square" | "tri";
@@ -120,6 +119,10 @@ export function synthSfx(name: SfxName): string {
       b = make(0.4);
       tone(b, 0, 0.35, 880, 880, 0.5, "square", 3);
       tone(b, 0, 0.35, 1320, 1320, 0.25, "square", 3);
+      break;
+        case "jump":
+      b = make(0.22);
+      tone(b, 0, 0.2, 280, 620, 0.55, "sine", 3);
       break;
   }
   return toWavDataUri(b);

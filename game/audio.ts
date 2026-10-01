@@ -9,6 +9,7 @@ const SFX_VOLUME: Record<SfxName, number> = {
   swoosh: 0.35,
   tick: 0.5,
   go: 0.6,
+jump: 0.5,
 };
 
 const sfx: Partial<Record<SfxName, Howl>> = {};

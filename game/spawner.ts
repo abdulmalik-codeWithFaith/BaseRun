@@ -6,6 +6,8 @@ import {
   START_ROW_GAP,
   COIN_SPACING,
   DIFFICULTY_DISTANCE,
+  HURDLE_START,
+  HURDLE_CHANCE,
 } from "@/game/constants";
 import type { ObstacleKind } from "@/game/obstacles";
 
@@ -69,6 +71,17 @@ function chooseBlocked(count: number): boolean[] {
 
 // gap = distance to the previous (closer) row, used to center the coins between them
 export function spawnRow(z: number, gap: number) {
+  // Hurdle row: barriers in all 3 lanes, so you must jump.
+  // prevBlocked stays empty because a hurdle never traps you in a lane.
+  if (runtime.distance > HURDLE_START && Math.random() < HURDLE_CHANCE) {
+    for (let lane = 0; lane < 3; lane++) addObstacle("barrier", lane, z);
+    for (let i = -2; i <= 2; i++) {
+      addCoin(1, z + i * COIN_SPACING, 1.0 + 0.9 * (1 - (i / 2) ** 2)); // reward arc
+    }
+    runtime.prevBlocked = [false, false, false];
+    return;
+  }
+
   const diff = Math.min(1, runtime.distance / DIFFICULTY_DISTANCE);
   const count = Math.random() < 0.2 + diff * 0.35 ? 2 : 1;
   const blocked = chooseBlocked(count);
@@ -77,7 +90,6 @@ export function spawnRow(z: number, gap: number) {
     if (isBlocked) addObstacle(pickKind(diff), lane, z);
   });
 
-  // Coins: a line or arc of 5, in a lane that is open in BOTH neighbouring rows
   if (Math.random() < 0.75) {
     const open = [0, 1, 2].filter((l) => !blocked[l] && !runtime.prevBlocked[l]);
     if (open.length) {

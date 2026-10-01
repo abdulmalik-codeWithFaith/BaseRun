@@ -17,6 +17,7 @@ import {
   PLAYER_HALF_D,
   HIT_FORGIVENESS,
   COIN_REACH_X,
+  COIN_REACH_Y,
   COIN_REACH_Z,
   CRASH_SPEED_KEEP,
 } from "@/game/constants";
@@ -72,8 +73,10 @@ export default function WorldSystem() {
       const spec = OBSTACLE_SPECS[o.kind];
       const halfW = (spec.w / 2) * HIT_FORGIVENESS + PLAYER_HALF_W;
       const halfD = (spec.d / 2) * HIT_FORGIVENESS;
+      const clearable = runtime.playerY >= spec.h - 0.05; // jumped high enough
 
       if (
+        !clearable &&
         Math.abs(o.x - px) < halfW &&
         o.z - move - halfD <= PLAYER_HALF_D &&
         o.z + halfD >= -PLAYER_HALF_D
@@ -81,8 +84,8 @@ export default function WorldSystem() {
         runtime.crashSide = px >= o.x ? 1 : -1;
         runtime.speed *= CRASH_SPEED_KEEP;
         vibrate(150);
-        store.endRun();
         playSfx("crash");
+        store.endRun();
         return;
       }
     }
@@ -93,6 +96,7 @@ export default function WorldSystem() {
       if (!c.active) continue;
       if (
         Math.abs(c.x - px) < COIN_REACH_X &&
+        Math.abs(c.y - (runtime.playerY + 0.9)) < COIN_REACH_Y &&
         c.z - move <= COIN_REACH_Z &&
         c.z >= -COIN_REACH_Z
       ) {
@@ -100,10 +104,10 @@ export default function WorldSystem() {
         picked++;
       }
     }
-        if (picked) {
+    if (picked) {
       store.addCoin(picked);
       playSfx("coin");
-    } // Step 6: coin sound / vibration goes here
+    }
   });
 
   return null;

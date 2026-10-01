@@ -13,9 +13,9 @@ export default function CameraRig() {
     const diff = LANES[runtime.lane] - x;
 
     cam.position.x = MathUtils.damp(cam.position.x, x * 0.6, 5, dt);
-    cam.position.y = 3.2;
+        cam.position.y = 3.2 + runtime.playerY * 0.4;
     cam.position.z = 6;
-    cam.lookAt(x * 0.4, 1.0, -8);
+    cam.lookAt(x * 0.4, 1.0 + runtime.playerY * 0.5, -8);
     cam.rotateZ(-diff * 0.02); // slight bank in lane changes
 
     const fov = 60 + (runtime.speed / MAX_SPEED) * 12;

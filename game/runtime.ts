@@ -22,6 +22,9 @@ export const runtime = {
   lane: 1,      // 0 = left, 1 = center, 2 = right
   playerX: 0,   // smoothed world x of the player
   crashSide: 1, // which way the bike tips over (-1 / 1)
+    playerY: 0,     // height above the road
+  velY: 0,        // vertical speed
+  jumpBuffer: 0,  // seconds left on a buffered jump press
 
   // pooled entities (z is negative ahead of the player, 0 = player)
   obstacles: Array.from({ length: OBSTACLE_POOL }, (): Obstacle => ({
@@ -49,4 +52,7 @@ export function resetRuntime() {
   runtime.playerX = 0;
   // speed is kept so the road doesn't jump when the run starts
   // entities are reset by seedWorld() in spawner.ts
+    runtime.playerY = 0;
+  runtime.velY = 0;
+  runtime.jumpBuffer = 0;
 }

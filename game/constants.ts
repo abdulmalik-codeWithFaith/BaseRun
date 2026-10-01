@@ -35,3 +35,11 @@ export const HIT_FORGIVENESS = 0.85;   // shrinks obstacle hitboxes slightly (fe
 export const COIN_REACH_X = 0.75;
 export const COIN_REACH_Z = 0.9;
 export const CRASH_SPEED_KEEP = 0.15;  // speed multiplier on impact
+
+// ---- Step 7: jumping ----
+export const JUMP_VELOCITY = 9.5;   // initial upward speed (u/s)
+export const GRAVITY = 28;          // peak height ~1.6 m, air time ~0.68 s
+export const JUMP_BUFFER = 0.12;    // seconds a early jump press is remembered
+export const COIN_REACH_Y = 0.8;    // vertical pickup tolerance
+export const HURDLE_START = 150;    // meters before hurdle rows can appear
+export const HURDLE_CHANCE = 0.14;
