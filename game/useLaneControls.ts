@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useGameStore } from "@/store/useGameStore";
 import { runtime } from "@/game/runtime";
-import { SWIPE_THRESHOLD } from "@/game/constants";
+import { SWIPE_THRESHOLD, JUMP_BUFFER } from "@/game/constants";
 import { playSfx } from "@/game/audio";
 
 export function useLaneControls() {
@@ -12,11 +12,16 @@ export function useLaneControls() {
   useEffect(() => {
     if (status !== "playing") return;
 
-        const move = (dir: -1 | 1) => {
+    const move = (dir: -1 | 1) => {
       const next = Math.min(2, Math.max(0, runtime.lane + dir));
       if (next === runtime.lane) return;
       runtime.lane = next;
       playSfx("swoosh");
+    };
+
+    // GameLoop consumes this when the bike is on the ground
+    const jump = () => {
+      runtime.jumpBuffer = JUMP_BUFFER;
     };
 
     const onKey = (e: KeyboardEvent) => {
@@ -29,6 +34,12 @@ export function useLaneControls() {
         case "ArrowRight":
         case "KeyD":
           move(1);
+          break;
+        case "ArrowUp":
+        case "KeyW":
+        case "Space":
+          e.preventDefault();
+          jump();
           break;
       }
     };
@@ -46,8 +57,13 @@ export function useLaneControls() {
       if (!active) return;
       const dx = e.clientX - startX;
       const dy = e.clientY - startY;
+
       if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy)) {
         move(dx > 0 ? 1 : -1);
+        startX = e.clientX;
+        startY = e.clientY;
+      } else if (dy < -SWIPE_THRESHOLD && Math.abs(dy) > Math.abs(dx)) {
+        jump(); // swipe up
         startX = e.clientX;
         startY = e.clientY;
       }
