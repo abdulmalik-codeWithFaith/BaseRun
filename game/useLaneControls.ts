@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useGameStore } from "@/store/useGameStore";
 import { runtime } from "@/game/runtime";
 import { SWIPE_THRESHOLD } from "@/game/constants";
+import { playSfx } from "@/game/audio";
 
 export function useLaneControls() {
   const status = useGameStore((s) => s.status);
@@ -11,8 +12,11 @@ export function useLaneControls() {
   useEffect(() => {
     if (status !== "playing") return;
 
-    const move = (dir: -1 | 1) => {
-      runtime.lane = Math.min(2, Math.max(0, runtime.lane + dir));
+        const move = (dir: -1 | 1) => {
+      const next = Math.min(2, Math.max(0, runtime.lane + dir));
+      if (next === runtime.lane) return;
+      runtime.lane = next;
+      playSfx("swoosh");
     };
 
     const onKey = (e: KeyboardEvent) => {
@@ -25,9 +29,6 @@ export function useLaneControls() {
         case "ArrowRight":
         case "KeyD":
           move(1);
-          break;
-        case "Escape": // TEMP until Step 4's pause screen
-          useGameStore.getState().endRun();
           break;
       }
     };
@@ -47,7 +48,6 @@ export function useLaneControls() {
       const dy = e.clientY - startY;
       if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy)) {
         move(dx > 0 ? 1 : -1);
-        // reset origin so one long swipe can change two lanes
         startX = e.clientX;
         startY = e.clientY;
       }

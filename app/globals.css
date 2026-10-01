@@ -29,3 +29,41 @@ canvas {
   display: block;
   touch-action: none;            /* lets swipe events reach our handlers */
 }
+
+/* ---- Step 4: UI animations ---- */
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(24px) scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+@keyframes count-pop {
+  0%   { opacity: 0; transform: scale(2.2); }
+  25%  { opacity: 1; transform: scale(1); }
+  80%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.8); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50%      { transform: translateY(-12px) rotate(4deg); }
+}
+@keyframes wave {
+  0%, 60%, 100% { transform: translateY(0); }
+  30%           { transform: translateY(-10px); }
+}
+
+.anim-fade-in { animation: fade-in 0.3s ease-out both; }
+.anim-rise    { animation: rise 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+.anim-pop     { animation: pop 0.25s ease-out; }
+.anim-count   { animation: count-pop 0.75s ease-out both; }
+.anim-float   { animation: float 2.4s ease-in-out infinite; }
+.anim-wave    { animation: wave 1.8s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-float,
+  .anim-wave { animation: none; }
+}

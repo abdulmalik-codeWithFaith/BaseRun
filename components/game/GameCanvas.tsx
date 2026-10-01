@@ -1,6 +1,7 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
+import { useGameStore } from "@/store/useGameStore";
 import GameLoop from "./GameLoop";
 import WorldSystem from "./WorldSystem";
 import ObstacleField from "./ObstacleField";
@@ -10,9 +11,15 @@ import CameraRig from "./CameraRig";
 import Road from "./Road";
 
 export default function GameCanvas() {
+  const quality = useGameStore((s) => s.settings.quality);
+  const covered = useGameStore((s) => s.status === "menu" && s.screen !== "home");
+
   return (
     <Canvas
-      dpr={[1, 2]}
+      key={quality}
+      frameloop={covered ? "never" : "always"}
+      dpr={quality === "low" ? 1 : [1, 2]}
+      gl={{ antialias: quality === "high", powerPreference: "high-performance" }}
       camera={{ position: [0, 3.2, 6], fov: 60 }}
       className="!absolute inset-0"
     >

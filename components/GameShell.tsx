@@ -2,10 +2,18 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
-import { useLaneControls } from "@/game/useLaneControls";
 import { useGameStore } from "@/store/useGameStore";
-import DebugHud from "@/components/ui/DebugHud";
+import { useLaneControls } from "@/game/useLaneControls";
+import { usePauseControls } from "@/game/usePauseControls";
+import { useAudio } from "@/game/useAudio";
+import { playSfx } from "@/game/audio";
 import MainMenu from "@/components/ui/MainMenu";
+import Showroom from "@/components/ui/Showroom";
+import Settings from "@/components/ui/Settings";
+import Hud from "@/components/ui/Hud";
+import Countdown from "@/components/ui/Countdown";
+import PauseMenu from "@/components/ui/PauseMenu";
+import GameOver from "@/components/ui/GameOver";
 
 const GameCanvas = dynamic(() => import("@/components/game/GameCanvas"), {
   ssr: false,
@@ -13,8 +21,12 @@ const GameCanvas = dynamic(() => import("@/components/game/GameCanvas"), {
 
 export default function GameShell() {
   const status = useGameStore((s) => s.status);
+  const screen = useGameStore((s) => s.screen);
   const [ready, setReady] = useState(false);
+
   useLaneControls();
+  usePauseControls();
+  useAudio();
 
   useEffect(() => {
     Promise.resolve(useGameStore.persist.rehydrate()).then(() =>
@@ -30,11 +42,28 @@ export default function GameShell() {
     );
   }
 
+  const inRun =
+    status === "countdown" || status === "playing" || status === "paused";
+  const onMenu = status === "menu";
+
   return (
-    <main className="relative h-dvh w-screen overflow-hidden touch-none select-none">
+    <main
+      className="relative h-dvh w-screen touch-none select-none overflow-hidden"
+      onClickCapture={(e) => {
+        if ((e.target as HTMLElement).closest("button")) playSfx("click");
+      }}
+    >
       <GameCanvas />
-      {status === "menu" && <MainMenu />}
-      {status !== "menu" && <DebugHud />}
+
+      {onMenu && screen === "home" && <MainMenu />}
+      {onMenu && screen === "garage" && <Showroom mode="garage" />}
+      {onMenu && screen === "shop" && <Showroom mode="shop" />}
+      {onMenu && screen === "settings" && <Settings />}
+
+      {inRun && <Hud />}
+      {(status === "countdown" || status === "playing") && <Countdown />}
+      {status === "paused" && <PauseMenu />}
+      {status === "gameover" && <GameOver />}
     </main>
   );
 }
