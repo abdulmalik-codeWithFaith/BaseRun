@@ -24,6 +24,8 @@ export interface BikeDef {
   model?: string;        // e.g. "/models/bike-1.glb"
   modelScale?: number;
   modelRotY?: number;
+    riderOffset?: [number, number, number]; // nudge the rider [x, y, z] to fit the model
+  noRider?: boolean;                      // true if the GLB already includes a rider
 }
 
 export interface CharacterDef {
@@ -40,24 +42,30 @@ export interface CharacterDef {
 export const BIKES: BikeDef[] = [
   {
     id: "bike-1", name: "City Bike", price: 0,
+    model: "/models/bike-1.glb",
+    modelScale: 1,
+    modelRotY: 0,
     frame: "#ff5a3c", accent: "#222222", rim: "#c8c8cc",
     wheelR: 0.35, tire: 0.045, base: 0.55, seatH: 0.92, barH: 1.0, barW: 0.55,
     crouch: 0, tube: 0.025, extra: "basket",
   },
   {
     id: "bike-2", name: "Stunt BMX", price: 500,
+    model: "/models/bike-2.glb", modelScale: 1, modelRotY: 0,
     frame: "#2563eb", accent: "#111111", rim: "#fbbf24",
     wheelR: 0.28, tire: 0.06, base: 0.46, seatH: 0.78, barH: 0.98, barW: 0.72,
     crouch: 0.1, tube: 0.035, extra: "none",
   },
   {
     id: "bike-3", name: "Road Racer", price: 1500,
+    model: "/models/bike-3.glb", modelScale: 1, modelRotY: 0,
     frame: "#111827", accent: "#ef4444", rim: "#ef4444",
     wheelR: 0.37, tire: 0.03, base: 0.62, seatH: 1.0, barH: 0.9, barW: 0.42,
     crouch: 1, tube: 0.022, disc: true, extra: "aero",
   },
   {
     id: "bike-4", name: "Super Cruiser", price: 5000,
+    model: "/models/bike-4.glb", modelScale: 1, modelRotY: 0,
     frame: "#a855f7", accent: "#22d3ee", rim: "#22d3ee",
     wheelR: 0.4, tire: 0.1, base: 0.7, seatH: 0.95, barH: 1.12, barW: 0.6,
     crouch: 0.35, tube: 0.05, extra: "spoiler",

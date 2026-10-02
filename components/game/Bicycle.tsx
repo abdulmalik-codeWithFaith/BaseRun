@@ -6,6 +6,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
   type ReactNode,
   type RefObject,
 } from "react";
@@ -19,6 +20,7 @@ import { getBike, getCharacter, type BikeDef, type CharacterDef } from "@/game/c
 type V3 = [number, number, number];
 const PREVIEW_SPEED = 5;
 
+// ---------------------------------------------------------------- helpers
 function Bar({
   from,
   to,
@@ -76,7 +78,6 @@ function Wheel({
               <cylinderGeometry args={[inner, inner, 0.035, 24]} />
               <meshStandardMaterial color={rim} />
             </mesh>
-            {/* marker so you can see the disc spin */}
             <mesh position={[0, inner * 0.7, 0]}>
               <boxGeometry args={[0.045, 0.09, 0.045]} />
               <meshStandardMaterial color="#ffffff" />
@@ -99,8 +100,26 @@ function Wheel({
   );
 }
 
-// ---------------------------------------------------------------- procedural
-function ProceduralBike({
+// key points of a bike, derived from the catalog numbers (bike faces -z)
+function keyPoints(bike: BikeDef) {
+  const b = bike.base;
+  const BB: V3 = [0, bike.wheelR + 0.03, b * 0.15];
+  const REAR: V3 = [0, bike.wheelR, b];
+  const FRONT: V3 = [0, bike.wheelR, -b];
+  const SEAT: V3 = [0, bike.seatH, b * 0.4];
+  const HEAD: V3 = [0, bike.barH - 0.05, -b * 0.7];
+  const HIP: V3 = [0, bike.seatH + 0.08, b * 0.44];
+  const SHOULDER: V3 = [
+    0,
+    bike.seatH + 0.63 - bike.crouch * 0.28,
+    -0.15 * (b / 0.55) - bike.crouch * 0.3,
+  ];
+  return { BB, REAR, FRONT, SEAT, HEAD, HIP, SHOULDER, legLen: HIP[1] - BB[1] };
+}
+
+// ---------------------------------------------------------------- rider
+// Used by both the built-in bike and GLB bikes.
+function Rider({
   bike,
   rider,
   preview,
@@ -109,102 +128,29 @@ function ProceduralBike({
   rider: CharacterDef;
   preview?: boolean;
 }) {
-  const r = bike.wheelR;
-  const front = useRef<Group>(null);
-  const rear = useRef<Group>(null);
   const legL = useRef<Group>(null);
   const legR = useRef<Group>(null);
   const pedal = useRef(0);
-
-  const k = useMemo(() => {
-    const b = bike.base;
-    const BB: V3 = [0, bike.wheelR + 0.03, b * 0.15];
-    const REAR: V3 = [0, bike.wheelR, b];
-    const FRONT: V3 = [0, bike.wheelR, -b];
-    const SEAT: V3 = [0, bike.seatH, b * 0.4];
-    const HEAD: V3 = [0, bike.barH - 0.05, -b * 0.7];
-    const HIP: V3 = [0, bike.seatH + 0.08, b * 0.44];
-    const SHOULDER: V3 = [
-      0,
-      bike.seatH + 0.63 - bike.crouch * 0.28,
-      -0.15 * (b / 0.55) - bike.crouch * 0.3,
-    ];
-    return { BB, REAR, FRONT, SEAT, HEAD, HIP, SHOULDER, legLen: HIP[1] - BB[1] };
-  }, [bike]);
+  const k = useMemo(() => keyPoints(bike), [bike]);
 
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.05);
     const speed = preview ? PREVIEW_SPEED : runtime.speed;
-    const spin = (speed * dt) / r;
-    if (front.current) front.current.rotation.x -= spin;
-    if (rear.current) rear.current.rotation.x -= spin;
-
     pedal.current += speed * 0.6 * dt;
     if (legL.current) legL.current.rotation.x = Math.sin(pedal.current) * 0.55;
     if (legR.current) legR.current.rotation.x = Math.sin(pedal.current + Math.PI) * 0.55;
   });
 
-  const { BB, REAR, FRONT, SEAT, HEAD, HIP, SHOULDER, legLen } = k;
+  const { HEAD, HIP, SHOULDER, legLen } = k;
   const headY = SHOULDER[1] + 0.23 - bike.crouch * 0.04;
   const headZ = SHOULDER[2] - 0.07;
-  const topY = (SEAT[1] + HEAD[1]) / 2;
-  const topZ = (SEAT[2] + HEAD[2]) / 2;
 
   return (
-    <group>
-      <Wheel z={FRONT[2]} r={r} tire={bike.tire} rim={bike.rim} spinRef={front} />
-      <Wheel z={REAR[2]} r={r} tire={bike.tire} rim={bike.rim} disc={bike.disc} spinRef={rear} />
-
-      {/* frame */}
-      <Bar from={BB} to={SEAT} radius={bike.tube} color={bike.frame} />
-      <Bar from={SEAT} to={HEAD} radius={bike.tube} color={bike.frame} />
-      <Bar from={BB} to={HEAD} radius={bike.tube * 1.2} color={bike.frame} />
-      <Bar from={REAR} to={SEAT} radius={bike.tube} color={bike.frame} />
-      <Bar from={REAR} to={BB} radius={bike.tube} color={bike.frame} />
-      <Bar from={HEAD} to={FRONT} radius={bike.tube} color="#555" />
-
-      {/* handlebar + saddle */}
-      <mesh position={[0, bike.barH, HEAD[2]]}>
-        <boxGeometry args={[bike.barW, 0.04, 0.04]} />
-        <meshStandardMaterial color={bike.accent} />
-      </mesh>
-      <mesh position={[0, bike.seatH + 0.03, SEAT[2] + 0.02]}>
-        <boxGeometry args={[0.14, 0.05, 0.28]} />
-        <meshStandardMaterial color={bike.accent} />
-      </mesh>
-
-      {/* extras: this is what makes each bike look different */}
-      {bike.extra === "basket" && (
-        <mesh position={[0, bike.barH - 0.18, HEAD[2] - 0.2]}>
-          <boxGeometry args={[0.34, 0.2, 0.3]} />
-          <meshStandardMaterial color={bike.accent} />
-        </mesh>
-      )}
-      {bike.extra === "spoiler" && (
-        <>
-          <mesh position={[0, bike.seatH - 0.02, REAR[2] + 0.12]}>
-            <boxGeometry args={[0.5, 0.04, 0.2]} />
-            <meshStandardMaterial color={bike.accent} />
-          </mesh>
-          <mesh position={[0, bike.seatH - 0.1, REAR[2] + 0.05]}>
-            <boxGeometry args={[0.04, 0.16, 0.04]} />
-            <meshStandardMaterial color={bike.accent} />
-          </mesh>
-          <mesh position={[0, bike.seatH - 0.14, REAR[2] + 0.24]}>
-            <boxGeometry args={[0.12, 0.06, 0.04]} />
-            <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={0.8} />
-          </mesh>
-        </>
-      )}
-      {bike.extra === "aero" && (
-        <mesh position={[0, topY + 0.05, topZ]}>
-          <boxGeometry args={[0.05, 0.05, 0.36]} />
-          <meshStandardMaterial color={bike.accent} />
-        </mesh>
-      )}
-
-      {/* rider */}
+    <group position={bike.riderOffset ?? [0, 0, 0]}>
+      {/* torso */}
       <Bar from={HIP} to={SHOULDER} radius={0.14} color={rider.shirt} />
+
+      {/* head */}
       <mesh position={[0, headY, headZ]}>
         <sphereGeometry args={[0.13, 16, 12]} />
         <meshStandardMaterial color={rider.skin} />
@@ -241,6 +187,7 @@ function ProceduralBike({
         </>
       )}
 
+      {/* arms to the handlebar */}
       {[-1, 1].map((s) => (
         <Bar
           key={s}
@@ -270,8 +217,101 @@ function ProceduralBike({
   );
 }
 
+// ---------------------------------------------------------------- built-in bike
+function ProceduralBike({
+  bike,
+  rider,
+  preview,
+}: {
+  bike: BikeDef;
+  rider: CharacterDef;
+  preview?: boolean;
+}) {
+  const r = bike.wheelR;
+  const front = useRef<Group>(null);
+  const rear = useRef<Group>(null);
+  const k = useMemo(() => keyPoints(bike), [bike]);
+
+  useFrame((_, delta) => {
+    const dt = Math.min(delta, 0.05);
+    const speed = preview ? PREVIEW_SPEED : runtime.speed;
+    const spin = (speed * dt) / r;
+    if (front.current) front.current.rotation.x -= spin;
+    if (rear.current) rear.current.rotation.x -= spin;
+  });
+
+  const { BB, REAR, FRONT, SEAT, HEAD } = k;
+  const topY = (SEAT[1] + HEAD[1]) / 2;
+  const topZ = (SEAT[2] + HEAD[2]) / 2;
+
+  return (
+    <group>
+      <Wheel z={FRONT[2]} r={r} tire={bike.tire} rim={bike.rim} spinRef={front} />
+      <Wheel z={REAR[2]} r={r} tire={bike.tire} rim={bike.rim} disc={bike.disc} spinRef={rear} />
+
+      {/* frame */}
+      <Bar from={BB} to={SEAT} radius={bike.tube} color={bike.frame} />
+      <Bar from={SEAT} to={HEAD} radius={bike.tube} color={bike.frame} />
+      <Bar from={BB} to={HEAD} radius={bike.tube * 1.2} color={bike.frame} />
+      <Bar from={REAR} to={SEAT} radius={bike.tube} color={bike.frame} />
+      <Bar from={REAR} to={BB} radius={bike.tube} color={bike.frame} />
+      <Bar from={HEAD} to={FRONT} radius={bike.tube} color="#555" />
+
+      {/* handlebar + saddle */}
+      <mesh position={[0, bike.barH, HEAD[2]]}>
+        <boxGeometry args={[bike.barW, 0.04, 0.04]} />
+        <meshStandardMaterial color={bike.accent} />
+      </mesh>
+      <mesh position={[0, bike.seatH + 0.03, SEAT[2] + 0.02]}>
+        <boxGeometry args={[0.14, 0.05, 0.28]} />
+        <meshStandardMaterial color={bike.accent} />
+      </mesh>
+
+      {/* extras */}
+      {bike.extra === "basket" && (
+        <mesh position={[0, bike.barH - 0.18, HEAD[2] - 0.2]}>
+          <boxGeometry args={[0.34, 0.2, 0.3]} />
+          <meshStandardMaterial color={bike.accent} />
+        </mesh>
+      )}
+      {bike.extra === "spoiler" && (
+        <>
+          <mesh position={[0, bike.seatH - 0.02, REAR[2] + 0.12]}>
+            <boxGeometry args={[0.5, 0.04, 0.2]} />
+            <meshStandardMaterial color={bike.accent} />
+          </mesh>
+          <mesh position={[0, bike.seatH - 0.1, REAR[2] + 0.05]}>
+            <boxGeometry args={[0.04, 0.16, 0.04]} />
+            <meshStandardMaterial color={bike.accent} />
+          </mesh>
+          <mesh position={[0, bike.seatH - 0.14, REAR[2] + 0.24]}>
+            <boxGeometry args={[0.12, 0.06, 0.04]} />
+            <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={0.8} />
+          </mesh>
+        </>
+      )}
+      {bike.extra === "aero" && (
+        <mesh position={[0, topY + 0.05, topZ]}>
+          <boxGeometry args={[0.05, 0.05, 0.36]} />
+          <meshStandardMaterial color={bike.accent} />
+        </mesh>
+      )}
+
+      <Rider bike={bike} rider={rider} preview={preview} />
+    </group>
+  );
+}
+
 // ---------------------------------------------------------------- real model
-function GlbBike({ bike, preview }: { bike: BikeDef; preview?: boolean }) {
+function GlbBike({
+  bike,
+  rider,
+  preview,
+}: {
+  bike: BikeDef;
+  rider: CharacterDef;
+  preview?: boolean;
+}) {
   const { scene, animations } = useGLTF(bike.model as string);
   const root = useRef<Group>(null);
   const wheels = useRef<Object3D[]>([]);
@@ -286,7 +326,6 @@ function GlbBike({ bike, preview }: { bike: BikeDef; preview?: boolean }) {
     wheels.current = found;
   }, [scene]);
 
-  // play the model's first animation clip, if it has one
   useEffect(() => {
     const a = names.length ? actions[names[0]] : null;
     a?.reset().play();
@@ -297,20 +336,65 @@ function GlbBike({ bike, preview }: { bike: BikeDef; preview?: boolean }) {
 
   useFrame((_, delta) => {
     const speed = preview ? PREVIEW_SPEED : runtime.speed;
-    const spin = (Math.min(delta, 0.05) * speed) / 0.35;
-    for (const w of wheels.current) w.rotation.x -= spin; // change axis here if wheels spin wrong
+    const spin = (Math.min(delta, 0.05) * speed) / bike.wheelR;
+    for (const w of wheels.current) w.rotation.x -= spin; // change the axis here if wheels spin wrong
   });
 
   return (
-    <group rotation={[0, bike.modelRotY ?? 0, 0]} scale={bike.modelScale ?? 1}>
-      <group ref={root}>
-        <Clone object={scene} />
+    <group>
+      <group rotation={[0, bike.modelRotY ?? 0, 0]} scale={bike.modelScale ?? 1}>
+        <group ref={root}>
+          <Clone object={scene} />
+        </group>
       </group>
+
+      {/* the rider sits on top, in world units (not affected by modelScale) */}
+      {!bike.noRider && <Rider bike={bike} rider={rider} preview={preview} />}
     </group>
   );
 }
 
-// If the .glb is missing or broken, fall back to the built-in bike instead of crashing.
+// Checks that a model file exists before trying to load it.
+// A missing file means "use the built-in bike", with no error overlay.
+const fileExists = new Map<string, boolean>();
+
+function useFileExists(url?: string): boolean | null {
+  const [ok, setOk] = useState<boolean | null>(
+    url ? fileExists.get(url) ?? null : false
+  );
+
+  useEffect(() => {
+    if (!url) {
+      setOk(false);
+      return;
+    }
+    const cached = fileExists.get(url);
+    if (cached !== undefined) {
+      setOk(cached);
+      return;
+    }
+    let live = true;
+    fetch(url)
+      .then((r) => {
+        const type = r.headers.get("content-type") ?? "";
+        const good = r.ok && !type.includes("text/html");
+        r.body?.cancel(); // we only wanted the status; useGLTF downloads it properly
+        fileExists.set(url, good);
+        if (live) setOk(good);
+      })
+      .catch(() => {
+        fileExists.set(url, false);
+        if (live) setOk(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, [url]);
+
+  return ok;
+}
+
+// Last line of defence for a file that exists but is corrupt.
 class Boundary extends Component<
   { fallback: ReactNode; children: ReactNode },
   { failed: boolean }
@@ -337,13 +421,16 @@ export default function Bicycle({ bikeId, characterId, preview }: BicycleProps) 
   const bike = getBike(bikeId ?? selBike);
   const rider = getCharacter(characterId ?? selChar);
 
+  const modelOk = useFileExists(bike.model);
   const procedural = <ProceduralBike bike={bike} rider={rider} preview={preview} />;
-  if (!bike.model) return procedural;
+
+  // no model, still checking, or file missing: built-in bike
+  if (!bike.model || !modelOk) return procedural;
 
   return (
     <Boundary key={bike.id} fallback={procedural}>
       <Suspense fallback={procedural}>
-        <GlbBike bike={bike} preview={preview} />
+        <GlbBike bike={bike} rider={rider} preview={preview} />
       </Suspense>
     </Boundary>
   );
