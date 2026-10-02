@@ -4,6 +4,8 @@ import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { BoxGeometry, Group, MeshStandardMaterial } from "three";
 import { runtime } from "@/game/runtime";
+import { useGameStore } from "@/store/useGameStore";
+import { getRoute } from "@/game/routes";
 import { LANE_WIDTH, ROAD_WIDTH, TILE_COUNT, TILE_LENGTH } from "@/game/constants";
 
 const DASH_Z = [-7.5, -2.5, 2.5, 7.5]; // 4 dashes per tile, evenly spaced
@@ -11,6 +13,7 @@ const POST_Z = [-5, 5];
 const WRAP = TILE_LENGTH * TILE_COUNT;
 
 export default function Road() {
+  const route = getRoute(useGameStore((s) => s.selectedRoute));
   const tiles = useRef<(Group | null)[]>([]);
 
   const shared = useMemo(

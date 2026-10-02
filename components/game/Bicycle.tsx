@@ -1,16 +1,23 @@
 "use client";
 
-import { useMemo, useRef, type RefObject } from "react";
+import {
+  Component,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { useFrame } from "@react-three/fiber";
-import { Group, Quaternion, Vector3 } from "three";
+import { Clone, useAnimations, useGLTF } from "@react-three/drei";
+import { Group, Object3D, Quaternion, Vector3 } from "three";
 import { runtime } from "@/game/runtime";
 import { useGameStore } from "@/store/useGameStore";
-import { getBike, getCharacter } from "@/game/catalog";
+import { getBike, getCharacter, type BikeDef, type CharacterDef } from "@/game/catalog";
 
 type V3 = [number, number, number];
-const WHEEL_R = 0.35;
 const PREVIEW_SPEED = 5;
-const SKIN = "#f1c27d";
 
 function Bar({
   from,
@@ -28,10 +35,7 @@ function Bar({
     const b = new Vector3(...to);
     const dir = b.clone().sub(a);
     const len = dir.length();
-    const quat = new Quaternion().setFromUnitVectors(
-      new Vector3(0, 1, 0),
-      dir.normalize()
-    );
+    const quat = new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), dir.normalize());
     return { pos: a.add(b).multiplyScalar(0.5), quat, len };
   }, [from, to]);
 
@@ -45,68 +49,93 @@ function Bar({
 
 function Wheel({
   z,
-  spinRef,
+  r,
   tire,
   rim,
+  disc,
+  spinRef,
 }: {
   z: number;
-  spinRef: RefObject<Group | null>;
+  r: number;
   tire: number;
   rim: string;
+  disc?: boolean;
+  spinRef: RefObject<Group | null>;
 }) {
+  const inner = r - tire;
   return (
-    <group position={[0, WHEEL_R, z]}>
+    <group position={[0, r, z]}>
       <group ref={spinRef}>
         <mesh rotation={[0, Math.PI / 2, 0]}>
-          <torusGeometry args={[WHEEL_R - tire, tire, 8, 24]} />
+          <torusGeometry args={[inner, tire, 8, 24]} />
           <meshStandardMaterial color="#1b1b1f" />
         </mesh>
-        <mesh>
-          <boxGeometry args={[0.02, 0.62, 0.02]} />
-          <meshStandardMaterial color={rim} />
-        </mesh>
-        <mesh>
-          <boxGeometry args={[0.02, 0.02, 0.62]} />
-          <meshStandardMaterial color={rim} />
-        </mesh>
+        {disc ? (
+          <>
+            <mesh rotation={[0, 0, Math.PI / 2]}>
+              <cylinderGeometry args={[inner, inner, 0.035, 24]} />
+              <meshStandardMaterial color={rim} />
+            </mesh>
+            {/* marker so you can see the disc spin */}
+            <mesh position={[0, inner * 0.7, 0]}>
+              <boxGeometry args={[0.045, 0.09, 0.045]} />
+              <meshStandardMaterial color="#ffffff" />
+            </mesh>
+          </>
+        ) : (
+          <>
+            <mesh>
+              <boxGeometry args={[0.02, inner * 2, 0.02]} />
+              <meshStandardMaterial color={rim} />
+            </mesh>
+            <mesh>
+              <boxGeometry args={[0.02, 0.02, inner * 2]} />
+              <meshStandardMaterial color={rim} />
+            </mesh>
+          </>
+        )}
       </group>
     </group>
   );
 }
 
-// Frame key points (bike faces -z)
-const REAR: V3 = [0, 0.35, 0.55];
-const FRONT: V3 = [0, 0.35, -0.55];
-const BB: V3 = [0, 0.38, 0.08];
-const SEAT: V3 = [0, 0.92, 0.22];
-const HEAD: V3 = [0, 0.95, -0.38];
-const HIP: V3 = [0, 1.0, 0.24];
-const SHOULDER: V3 = [0, 1.55, -0.15];
-const LEG_END: V3 = [0, -0.62, 0];
-const ORIGIN: V3 = [0, 0, 0];
-
-interface BicycleProps {
-  bikeId?: string;
-  characterId?: string;
-  preview?: boolean; // animate at a fixed speed instead of reading runtime.speed
-}
-
-export default function Bicycle({ bikeId, characterId, preview }: BicycleProps) {
-  const selBike = useGameStore((s) => s.selectedBike);
-  const selChar = useGameStore((s) => s.selectedCharacter);
-  const bike = getBike(bikeId ?? selBike);
-  const rider = getCharacter(characterId ?? selChar);
-
+// ---------------------------------------------------------------- procedural
+function ProceduralBike({
+  bike,
+  rider,
+  preview,
+}: {
+  bike: BikeDef;
+  rider: CharacterDef;
+  preview?: boolean;
+}) {
+  const r = bike.wheelR;
   const front = useRef<Group>(null);
   const rear = useRef<Group>(null);
   const legL = useRef<Group>(null);
   const legR = useRef<Group>(null);
   const pedal = useRef(0);
 
+  const k = useMemo(() => {
+    const b = bike.base;
+    const BB: V3 = [0, bike.wheelR + 0.03, b * 0.15];
+    const REAR: V3 = [0, bike.wheelR, b];
+    const FRONT: V3 = [0, bike.wheelR, -b];
+    const SEAT: V3 = [0, bike.seatH, b * 0.4];
+    const HEAD: V3 = [0, bike.barH - 0.05, -b * 0.7];
+    const HIP: V3 = [0, bike.seatH + 0.08, b * 0.44];
+    const SHOULDER: V3 = [
+      0,
+      bike.seatH + 0.63 - bike.crouch * 0.28,
+      -0.15 * (b / 0.55) - bike.crouch * 0.3,
+    ];
+    return { BB, REAR, FRONT, SEAT, HEAD, HIP, SHOULDER, legLen: HIP[1] - BB[1] };
+  }, [bike]);
+
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.05);
     const speed = preview ? PREVIEW_SPEED : runtime.speed;
-    const spin = (speed * dt) / WHEEL_R;
+    const spin = (speed * dt) / r;
     if (front.current) front.current.rotation.x -= spin;
     if (rear.current) rear.current.rotation.x -= spin;
 
@@ -115,44 +144,108 @@ export default function Bicycle({ bikeId, characterId, preview }: BicycleProps) 
     if (legR.current) legR.current.rotation.x = Math.sin(pedal.current + Math.PI) * 0.55;
   });
 
+  const { BB, REAR, FRONT, SEAT, HEAD, HIP, SHOULDER, legLen } = k;
+  const headY = SHOULDER[1] + 0.23 - bike.crouch * 0.04;
+  const headZ = SHOULDER[2] - 0.07;
+  const topY = (SEAT[1] + HEAD[1]) / 2;
+  const topZ = (SEAT[2] + HEAD[2]) / 2;
+
   return (
     <group>
-      <Wheel z={FRONT[2]} spinRef={front} tire={bike.tire} rim={bike.rim} />
-      <Wheel z={REAR[2]} spinRef={rear} tire={bike.tire} rim={bike.rim} />
+      <Wheel z={FRONT[2]} r={r} tire={bike.tire} rim={bike.rim} spinRef={front} />
+      <Wheel z={REAR[2]} r={r} tire={bike.tire} rim={bike.rim} disc={bike.disc} spinRef={rear} />
 
       {/* frame */}
-      <Bar from={BB} to={SEAT} color={bike.frame} />
-      <Bar from={SEAT} to={HEAD} color={bike.frame} />
-      <Bar from={BB} to={HEAD} radius={0.03} color={bike.frame} />
-      <Bar from={REAR} to={SEAT} color={bike.frame} />
-      <Bar from={REAR} to={BB} color={bike.frame} />
-      <Bar from={HEAD} to={FRONT} color="#555" />
+      <Bar from={BB} to={SEAT} radius={bike.tube} color={bike.frame} />
+      <Bar from={SEAT} to={HEAD} radius={bike.tube} color={bike.frame} />
+      <Bar from={BB} to={HEAD} radius={bike.tube * 1.2} color={bike.frame} />
+      <Bar from={REAR} to={SEAT} radius={bike.tube} color={bike.frame} />
+      <Bar from={REAR} to={BB} radius={bike.tube} color={bike.frame} />
+      <Bar from={HEAD} to={FRONT} radius={bike.tube} color="#555" />
 
-      {/* handlebar + seat */}
-      <mesh position={[0, 1.0, -0.38]}>
-        <boxGeometry args={[0.55, 0.04, 0.04]} />
+      {/* handlebar + saddle */}
+      <mesh position={[0, bike.barH, HEAD[2]]}>
+        <boxGeometry args={[bike.barW, 0.04, 0.04]} />
         <meshStandardMaterial color={bike.accent} />
       </mesh>
-      <mesh position={[0, 0.95, 0.24]}>
+      <mesh position={[0, bike.seatH + 0.03, SEAT[2] + 0.02]}>
         <boxGeometry args={[0.14, 0.05, 0.28]} />
         <meshStandardMaterial color={bike.accent} />
       </mesh>
 
+      {/* extras: this is what makes each bike look different */}
+      {bike.extra === "basket" && (
+        <mesh position={[0, bike.barH - 0.18, HEAD[2] - 0.2]}>
+          <boxGeometry args={[0.34, 0.2, 0.3]} />
+          <meshStandardMaterial color={bike.accent} />
+        </mesh>
+      )}
+      {bike.extra === "spoiler" && (
+        <>
+          <mesh position={[0, bike.seatH - 0.02, REAR[2] + 0.12]}>
+            <boxGeometry args={[0.5, 0.04, 0.2]} />
+            <meshStandardMaterial color={bike.accent} />
+          </mesh>
+          <mesh position={[0, bike.seatH - 0.1, REAR[2] + 0.05]}>
+            <boxGeometry args={[0.04, 0.16, 0.04]} />
+            <meshStandardMaterial color={bike.accent} />
+          </mesh>
+          <mesh position={[0, bike.seatH - 0.14, REAR[2] + 0.24]}>
+            <boxGeometry args={[0.12, 0.06, 0.04]} />
+            <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={0.8} />
+          </mesh>
+        </>
+      )}
+      {bike.extra === "aero" && (
+        <mesh position={[0, topY + 0.05, topZ]}>
+          <boxGeometry args={[0.05, 0.05, 0.36]} />
+          <meshStandardMaterial color={bike.accent} />
+        </mesh>
+      )}
+
       {/* rider */}
       <Bar from={HIP} to={SHOULDER} radius={0.14} color={rider.shirt} />
-      <mesh position={[0, 1.78, -0.22]}>
+      <mesh position={[0, headY, headZ]}>
         <sphereGeometry args={[0.13, 16, 12]} />
-        <meshStandardMaterial color={SKIN} />
+        <meshStandardMaterial color={rider.skin} />
       </mesh>
-      <mesh position={[0, 1.8, -0.22]}>
-        <sphereGeometry args={[0.16, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2]} />
-        <meshStandardMaterial color={rider.helmet} />
-      </mesh>
+
+      {rider.style === "helmet" && (
+        <mesh position={[0, headY + 0.02, headZ]}>
+          <sphereGeometry args={[0.16, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2]} />
+          <meshStandardMaterial color={rider.helmet} />
+        </mesh>
+      )}
+      {rider.style === "cap" && (
+        <>
+          <mesh position={[0, headY + 0.03, headZ]}>
+            <sphereGeometry args={[0.145, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2]} />
+            <meshStandardMaterial color={rider.helmet} />
+          </mesh>
+          <mesh position={[0, headY + 0.04, headZ - 0.14]}>
+            <boxGeometry args={[0.22, 0.02, 0.14]} />
+            <meshStandardMaterial color={rider.helmet} />
+          </mesh>
+        </>
+      )}
+      {rider.style === "hood" && (
+        <>
+          <mesh position={[0, headY, headZ + 0.03]}>
+            <sphereGeometry args={[0.17, 16, 12]} />
+            <meshStandardMaterial color={rider.helmet} />
+          </mesh>
+          <mesh position={[0, headY - 0.01, headZ - 0.06]}>
+            <sphereGeometry args={[0.1, 12, 10]} />
+            <meshStandardMaterial color={rider.skin} />
+          </mesh>
+        </>
+      )}
+
       {[-1, 1].map((s) => (
         <Bar
           key={s}
-          from={[s * 0.18, 1.5, -0.15]}
-          to={[s * 0.26, 1.0, -0.38]}
+          from={[s * 0.18, SHOULDER[1] - 0.05, SHOULDER[2]]}
+          to={[s * (bike.barW / 2 - 0.01), bike.barH, HEAD[2]]}
           radius={0.045}
           color={rider.shirt}
         />
@@ -166,13 +259,92 @@ export default function Bicycle({ bikeId, characterId, preview }: BicycleProps) 
         ] as const
       ).map(({ s, ref }) => (
         <group key={s} ref={ref} position={[s * 0.1, HIP[1] - 0.02, HIP[2]]}>
-          <Bar from={ORIGIN} to={LEG_END} radius={0.06} color={rider.pants} />
-          <mesh position={[0, -0.64, -0.06]}>
+          <Bar from={[0, 0, 0]} to={[0, -legLen, 0]} radius={0.06} color={rider.pants} />
+          <mesh position={[0, -legLen - 0.01, -0.06]}>
             <boxGeometry args={[0.1, 0.05, 0.22]} />
             <meshStandardMaterial color="#111" />
           </mesh>
         </group>
       ))}
     </group>
+  );
+}
+
+// ---------------------------------------------------------------- real model
+function GlbBike({ bike, preview }: { bike: BikeDef; preview?: boolean }) {
+  const { scene, animations } = useGLTF(bike.model as string);
+  const root = useRef<Group>(null);
+  const wheels = useRef<Object3D[]>([]);
+  const { actions, names } = useAnimations(animations, root);
+
+  // spin every top-level node whose name contains "wheel"
+  useEffect(() => {
+    const found: Object3D[] = [];
+    root.current?.traverse((o) => {
+      if (/wheel/i.test(o.name) && !(o.parent && /wheel/i.test(o.parent.name))) found.push(o);
+    });
+    wheels.current = found;
+  }, [scene]);
+
+  // play the model's first animation clip, if it has one
+  useEffect(() => {
+    const a = names.length ? actions[names[0]] : null;
+    a?.reset().play();
+    return () => {
+      a?.stop();
+    };
+  }, [actions, names]);
+
+  useFrame((_, delta) => {
+    const speed = preview ? PREVIEW_SPEED : runtime.speed;
+    const spin = (Math.min(delta, 0.05) * speed) / 0.35;
+    for (const w of wheels.current) w.rotation.x -= spin; // change axis here if wheels spin wrong
+  });
+
+  return (
+    <group rotation={[0, bike.modelRotY ?? 0, 0]} scale={bike.modelScale ?? 1}>
+      <group ref={root}>
+        <Clone object={scene} />
+      </group>
+    </group>
+  );
+}
+
+// If the .glb is missing or broken, fall back to the built-in bike instead of crashing.
+class Boundary extends Component<
+  { fallback: ReactNode; children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
+
+// ---------------------------------------------------------------- public
+interface BicycleProps {
+  bikeId?: string;
+  characterId?: string;
+  preview?: boolean;
+}
+
+export default function Bicycle({ bikeId, characterId, preview }: BicycleProps) {
+  const selBike = useGameStore((s) => s.selectedBike);
+  const selChar = useGameStore((s) => s.selectedCharacter);
+  const bike = getBike(bikeId ?? selBike);
+  const rider = getCharacter(characterId ?? selChar);
+
+  const procedural = <ProceduralBike bike={bike} rider={rider} preview={preview} />;
+  if (!bike.model) return procedural;
+
+  return (
+    <Boundary key={bike.id} fallback={procedural}>
+      <Suspense fallback={procedural}>
+        <GlbBike bike={bike} preview={preview} />
+      </Suspense>
+    </Boundary>
   );
 }

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useGameStore } from "@/store/useGameStore";
 import { useLaneControls } from "@/game/useLaneControls";
 import { usePauseControls } from "@/game/usePauseControls";
+import RoutesScreen from "@/components/ui/RoutesScreen";
 import { useAudio } from "@/game/useAudio";
 import { playSfx } from "@/game/audio";
 import MainMenu from "@/components/ui/MainMenu";
@@ -59,7 +60,7 @@ export default function GameShell() {
       {onMenu && screen === "garage" && <Showroom mode="garage" />}
       {onMenu && screen === "shop" && <Showroom mode="shop" />}
       {onMenu && screen === "settings" && <Settings />}
-
+      {onMenu && screen === "routes" && <RoutesScreen />}
       {inRun && <Hud />}
       {(status === "countdown" || status === "playing") && <Countdown />}
       {status === "paused" && <PauseMenu />}

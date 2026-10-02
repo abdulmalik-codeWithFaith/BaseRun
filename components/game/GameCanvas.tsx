@@ -2,10 +2,12 @@
 
 import { Canvas } from "@react-three/fiber";
 import { useGameStore } from "@/store/useGameStore";
+import { getRoute } from "@/game/routes";
 import GameLoop from "./GameLoop";
 import WorldSystem from "./WorldSystem";
 import ObstacleField from "./ObstacleField";
 import CoinField from "./CoinField";
+import SceneryField from "./SceneryField";
 import Player from "./Player";
 import CameraRig from "./CameraRig";
 import Road from "./Road";
@@ -13,6 +15,7 @@ import Road from "./Road";
 export default function GameCanvas() {
   const quality = useGameStore((s) => s.settings.quality);
   const covered = useGameStore((s) => s.status === "menu" && s.screen !== "home");
+  const route = getRoute(useGameStore((s) => s.selectedRoute));
 
   return (
     <Canvas
@@ -23,15 +26,16 @@ export default function GameCanvas() {
       camera={{ position: [0, 3.2, 6], fov: 60 }}
       className="!absolute inset-0"
     >
-      <color attach="background" args={["#8fd3ff"]} />
-      <fog attach="fog" args={["#8fd3ff", 25, 85]} />
-      <ambientLight intensity={0.9} />
-      <directionalLight position={[5, 10, 5]} intensity={1.3} />
+      <color attach="background" args={[route.sky]} />
+      <fog attach="fog" args={[route.fog, route.fogNear, route.fogFar]} />
+      <ambientLight intensity={route.ambient} />
+      <directionalLight position={[5, 10, 5]} intensity={route.sun} color={route.sunColor} />
 
       <GameLoop />
       <WorldSystem />
       <ObstacleField />
       <CoinField />
+      <SceneryField />
       <Player />
       <CameraRig />
       <Road />

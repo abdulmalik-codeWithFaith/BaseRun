@@ -3,6 +3,7 @@
 import { useGameStore } from "@/store/useGameStore";
 import { formatDistance } from "@/game/format";
 import InstallButton from "@/components/ui/InstallButton";
+import { getRoute } from "@/game/routes";
 
 const TITLE = "BASERUN".split("");
 
@@ -11,6 +12,7 @@ export default function MainMenu() {
   const wallet = useGameStore((s) => s.wallet);
   const best = useGameStore((s) => s.bestDistance);
   const openScreen = useGameStore((s) => s.openScreen);
+  const route = getRoute(useGameStore((s) => s.selectedRoute));
 
   return (
     <div className="anim-fade-in absolute inset-0 z-10 flex flex-col items-center justify-between bg-gradient-to-b from-sky-950/60 via-transparent to-sky-950/70 px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(2.5rem,env(safe-area-inset-top))] text-white">
@@ -55,6 +57,12 @@ export default function MainMenu() {
           className="w-full rounded-2xl bg-orange-500 py-4 text-2xl font-black shadow-[0_6px_0_#c2410c] active:translate-y-1 active:shadow-[0_2px_0_#c2410c]"
         >
           PLAY GAME
+        </button>
+                <button
+          onClick={() => openScreen("routes")}
+          className="w-full rounded-2xl bg-white/25 py-2.5 text-sm font-bold backdrop-blur active:scale-95"
+        >
+          {route.emoji} ROUTE: {route.name.toUpperCase()} ›
         </button>
 
         {/* wired up in Step 5 */}

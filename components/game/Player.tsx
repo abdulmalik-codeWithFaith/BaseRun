@@ -6,7 +6,7 @@ import { Group, MathUtils, Mesh } from "three";
 import Bicycle from "./Bicycle";
 import { useGameStore } from "@/store/useGameStore";
 import { runtime } from "@/game/runtime";
-import { LANES, LANE_DAMP } from "@/game/constants";
+import { LANES, LANE_STIFFNESS, LANE_DAMPING } from "@/game/constants";
 
 export default function Player() {
   const root = useRef<Group>(null);
@@ -20,6 +20,7 @@ export default function Player() {
     if (!l) return;
 
     if (crashed) {
+      runtime.velX = 0;
       l.rotation.z = MathUtils.damp(l.rotation.z, runtime.crashSide * 1.45, 8, dt);
       l.rotation.y = MathUtils.damp(l.rotation.y, runtime.crashSide * 0.5, 6, dt);
       l.rotation.x = MathUtils.damp(l.rotation.x, 0, 8, dt);
@@ -27,16 +28,18 @@ export default function Player() {
       return;
     }
 
-    const target = LANES[runtime.lane];
-    runtime.playerX = MathUtils.damp(runtime.playerX, target, LANE_DAMP, dt);
-    const diff = target - runtime.playerX;
+    // critically damped spring: eases in AND out, no sudden jerk
+    const err = LANES[runtime.lane] - runtime.playerX;
+    runtime.velX += (LANE_STIFFNESS * err - LANE_DAMPING * runtime.velX) * dt;
+    runtime.playerX += runtime.velX * dt;
 
     if (root.current) root.current.position.x = runtime.playerX;
 
     l.position.y = runtime.playerY;
-    l.rotation.z = MathUtils.clamp(-diff * 0.18, -0.35, 0.35);
-    l.rotation.y = MathUtils.clamp(-diff * 0.12, -0.3, 0.3);
-    l.rotation.x = MathUtils.clamp(runtime.velY * 0.025, -0.3, 0.3); // nose up / down
+    // lean and yaw follow sideways speed, smoothed
+    l.rotation.z = MathUtils.damp(l.rotation.z, MathUtils.clamp(-runtime.velX * 0.045, -0.35, 0.35), 10, dt);
+    l.rotation.y = MathUtils.damp(l.rotation.y, MathUtils.clamp(-runtime.velX * 0.03, -0.25, 0.25), 10, dt);
+    l.rotation.x = MathUtils.clamp(runtime.velY * 0.025, -0.3, 0.3);
 
     if (shadow.current) {
       const s = 1 / (1 + runtime.playerY * 0.8);

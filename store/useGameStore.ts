@@ -3,7 +3,7 @@ import { persist, createJSONStorage, type StateStorage } from "zustand/middlewar
 import { BIKES, CHARACTERS } from "@/game/catalog";
 
 export type GameStatus = "menu" | "countdown" | "playing" | "paused" | "gameover";
-export type Screen = "home" | "garage" | "shop" | "settings";
+   export type Screen = "home" | "garage" | "shop" | "settings" | "routes";
 
 export interface Settings {
   sound: boolean;
@@ -21,7 +21,8 @@ interface GameState {
   unlockedBikes: string[];
   unlockedCharacters: string[];
   settings: Settings;
-
+  selectedRoute: string;
+  selectRoute: (id: string) => void;
   // ---- session (not persisted) ----
   status: GameStatus;
   screen: Screen;
@@ -56,10 +57,12 @@ interface GameState {
 const DEFAULT_SAVE = {
   wallet: 0,
   bestDistance: 0,
+  
   selectedBike: "bike-1",
   selectedCharacter: "character-1",
   unlockedBikes: ["bike-1"],
   unlockedCharacters: ["character-1"],
+  selectedRoute: "city",
 };
 const DEFAULT_SETTINGS: Settings = {
   sound: true,
@@ -180,6 +183,7 @@ export const useGameStore = create<GameState>()(
         selectBike: (id) => {
           if (get().unlockedBikes.includes(id)) set({ selectedBike: id });
         },
+        selectRoute: (id) => set({ selectedRoute: id }),
         selectCharacter: (id) => {
           if (get().unlockedCharacters.includes(id)) set({ selectedCharacter: id });
         },
@@ -204,6 +208,7 @@ export const useGameStore = create<GameState>()(
         unlockedBikes: s.unlockedBikes,
         unlockedCharacters: s.unlockedCharacters,
         settings: s.settings,
+        selectedRoute: s.selectedRoute,
       }),
     }
   )

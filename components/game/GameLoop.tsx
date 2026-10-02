@@ -7,9 +7,10 @@ import { useGameStore } from "@/store/useGameStore";
 import { runtime, resetRuntime } from "@/game/runtime";
 import { playSfx } from "@/game/audio";
 import {
-  BASE_SPEED,
+  START_SPEED,
   MAX_SPEED,
-  SPEED_RAMP,
+  SPEED_PER_M,
+  SPEED_ACCEL,
   IDLE_SPEED,
   DISTANCE_PER_UNIT,
   JUMP_VELOCITY,
@@ -33,8 +34,8 @@ export default function GameLoop() {
     switch (status) {
       case "playing": {
         runtime.elapsed += dt;
-        const target = Math.min(MAX_SPEED, BASE_SPEED + runtime.elapsed * SPEED_RAMP);
-        runtime.speed = MathUtils.damp(runtime.speed, target, 3, dt);
+                const target = Math.min(MAX_SPEED, START_SPEED + runtime.distance * SPEED_PER_M);
+        runtime.speed = MathUtils.damp(runtime.speed, target, SPEED_ACCEL, dt);
         runtime.distance += runtime.speed * dt * DISTANCE_PER_UNIT;
 
         // ---- jump physics ----

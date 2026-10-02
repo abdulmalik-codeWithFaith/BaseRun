@@ -23,6 +23,7 @@ export const runtime = {
   playerX: 0,   // smoothed world x of the player
   crashSide: 1, // which way the bike tips over (-1 / 1)
     playerY: 0,     // height above the road
+      velX: 0,        // lateral speed (lane spring)
   velY: 0,        // vertical speed
   jumpBuffer: 0,  // seconds left on a buffered jump press
 
@@ -55,4 +56,5 @@ export function resetRuntime() {
     runtime.playerY = 0;
   runtime.velY = 0;
   runtime.jumpBuffer = 0;
+    runtime.velX = 0;
 }
