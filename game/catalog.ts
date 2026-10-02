@@ -20,11 +20,11 @@ export interface BikeDef {
   tube: number;     // frame tube radius
   disc?: boolean;   // solid rear disc wheel
   extra: BikeExtra;
-  // optional real model (see "Using real 3D models")
+  // optional real model
   model?: string;        // e.g. "/models/bike-1.glb"
   modelScale?: number;
   modelRotY?: number;
-    riderOffset?: [number, number, number]; // nudge the rider [x, y, z] to fit the model
+  riderOffset?: [number, number, number]; // nudge the rider [x, y, z] to fit the model
   noRider?: boolean;                      // true if the GLB already includes a rider
 }
 
@@ -37,14 +37,18 @@ export interface CharacterDef {
   helmet: string;   // helmet / cap / hood color
   skin: string;
   style: HeadStyle;
+  // optional real model
+  model?: string;                    // e.g. "/models/rider-1.glb"
+  modelScale?: number;
+  modelRotY?: number;
+  offset?: [number, number, number]; // nudge relative to the saddle [x, y, z]
+  anim?: string;                     // animation clip name; defaults to the first clip
 }
 
 export const BIKES: BikeDef[] = [
   {
     id: "bike-1", name: "City Bike", price: 0,
-    model: "/models/bike-1.glb",
-    modelScale: 1,
-    modelRotY: 0,
+    model: "/models/bike-1.glb", modelScale: 1, modelRotY: 0,
     frame: "#ff5a3c", accent: "#222222", rim: "#c8c8cc",
     wheelR: 0.35, tire: 0.045, base: 0.55, seatH: 0.92, barH: 1.0, barW: 0.55,
     crouch: 0, tube: 0.025, extra: "basket",
@@ -73,10 +77,26 @@ export const BIKES: BikeDef[] = [
 ];
 
 export const CHARACTERS: CharacterDef[] = [
-  { id: "character-1", name: "Blue Rider",  price: 0,    shirt: "#2563eb", pants: "#1f2937", helmet: "#facc15", skin: "#f1c27d", style: "helmet" },
-  { id: "character-2", name: "Red Rider",   price: 300,  shirt: "#dc2626", pants: "#1f2937", helmet: "#ffffff", skin: "#c68642", style: "cap" },
-  { id: "character-3", name: "Green Rider", price: 600,  shirt: "#16a34a", pants: "#374151", helmet: "#f97316", skin: "#8d5524", style: "helmet" },
-  { id: "character-4", name: "Gold Rider",  price: 2000, shirt: "#f59e0b", pants: "#111827", helmet: "#111827", skin: "#e0ac69", style: "hood" },
+  {
+    id: "character-1", name: "Blue Rider", price: 0,
+    shirt: "#2563eb", pants: "#1f2937", helmet: "#facc15", skin: "#f1c27d", style: "helmet",
+    model: "/models/rider-1.glb", modelScale: 1, modelRotY: 0, offset: [0, 0, 0],
+  },
+  {
+    id: "character-2", name: "Red Rider", price: 300,
+    shirt: "#dc2626", pants: "#1f2937", helmet: "#ffffff", skin: "#c68642", style: "cap",
+    model: "/models/rider-2.glb", modelScale: 1, modelRotY: 0, offset: [0, 0, 0],
+  },
+  {
+    id: "character-3", name: "Green Rider", price: 600,
+    shirt: "#16a34a", pants: "#374151", helmet: "#f97316", skin: "#8d5524", style: "helmet",
+    model: "/models/rider-3.glb", modelScale: 1, modelRotY: 0, offset: [0, 0, 0],
+  },
+  {
+    id: "character-4", name: "Gold Rider", price: 2000,
+    shirt: "#f59e0b", pants: "#111827", helmet: "#111827", skin: "#e0ac69", style: "hood",
+    model: "/models/rider-4.glb", modelScale: 1, modelRotY: 0, offset: [0, 0, 0],
+  },
 ];
 
 export const getBike = (id: string) => BIKES.find((b) => b.id === id) ?? BIKES[0];

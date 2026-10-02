@@ -20,7 +20,62 @@ import { getBike, getCharacter, type BikeDef, type CharacterDef } from "@/game/c
 type V3 = [number, number, number];
 const PREVIEW_SPEED = 5;
 
-// ---------------------------------------------------------------- helpers
+// ---------------------------------------------------------------- loading helpers
+// Checks that a model file exists before trying to load it.
+// A missing file means "use the built-in version", with no error overlay.
+const fileExists = new Map<string, boolean>();
+
+function useFileExists(url?: string): boolean | null {
+  const [ok, setOk] = useState<boolean | null>(
+    url ? fileExists.get(url) ?? null : false
+  );
+
+  useEffect(() => {
+    if (!url) {
+      setOk(false);
+      return;
+    }
+    const cached = fileExists.get(url);
+    if (cached !== undefined) {
+      setOk(cached);
+      return;
+    }
+    let live = true;
+    fetch(url)
+      .then((r) => {
+        const type = r.headers.get("content-type") ?? "";
+        const good = r.ok && !type.includes("text/html");
+        r.body?.cancel(); // we only wanted the status; useGLTF downloads it properly
+        fileExists.set(url, good);
+        if (live) setOk(good);
+      })
+      .catch(() => {
+        fileExists.set(url, false);
+        if (live) setOk(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, [url]);
+
+  return ok;
+}
+
+// Last line of defence for a file that exists but is corrupt.
+class Boundary extends Component<
+  { fallback: ReactNode; children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
+
+// ---------------------------------------------------------------- shape helpers
 function Bar({
   from,
   to,
@@ -117,9 +172,8 @@ function keyPoints(bike: BikeDef) {
   return { BB, REAR, FRONT, SEAT, HEAD, HIP, SHOULDER, legLen: HIP[1] - BB[1] };
 }
 
-// ---------------------------------------------------------------- rider
-// Used by both the built-in bike and GLB bikes.
-function Rider({
+// ---------------------------------------------------------------- riders
+function ProceduralRider({
   bike,
   rider,
   preview,
@@ -217,6 +271,61 @@ function Rider({
   );
 }
 
+function GlbRider({ bike, rider }: { bike: BikeDef; rider: CharacterDef }) {
+  const { scene, animations } = useGLTF(rider.model as string);
+  const root = useRef<Group>(null);
+  const { actions, names } = useAnimations(animations, root);
+  const k = useMemo(() => keyPoints(bike), [bike]);
+
+  useEffect(() => {
+    const name = rider.anim && names.includes(rider.anim) ? rider.anim : names[0];
+    const a = name ? actions[name] : null;
+    a?.reset().play();
+    return () => {
+      a?.stop();
+    };
+  }, [actions, names, rider.anim]);
+
+  // origin of the model = the saddle of the current bike
+  const [ox, oy, oz] = rider.offset ?? [0, 0, 0];
+  const base = bike.riderOffset ?? [0, 0, 0];
+
+  return (
+    <group
+      position={[base[0] + ox, base[1] + k.SEAT[1] + oy, base[2] + k.SEAT[2] + oz]}
+      rotation={[0, rider.modelRotY ?? 0, 0]}
+      scale={rider.modelScale ?? 1}
+    >
+      <group ref={root}>
+        <Clone object={scene} />
+      </group>
+    </group>
+  );
+}
+
+// Uses the GLB rider if its file exists, otherwise the built-in one.
+function RiderSwitch({
+  bike,
+  rider,
+  preview,
+}: {
+  bike: BikeDef;
+  rider: CharacterDef;
+  preview?: boolean;
+}) {
+  const ok = useFileExists(rider.model);
+  const fallback = <ProceduralRider bike={bike} rider={rider} preview={preview} />;
+  if (!rider.model || !ok) return fallback;
+
+  return (
+    <Boundary key={rider.id} fallback={fallback}>
+      <Suspense fallback={fallback}>
+        <GlbRider bike={bike} rider={rider} />
+      </Suspense>
+    </Boundary>
+  );
+}
+
 // ---------------------------------------------------------------- built-in bike
 function ProceduralBike({
   bike,
@@ -297,12 +406,12 @@ function ProceduralBike({
         </mesh>
       )}
 
-      <Rider bike={bike} rider={rider} preview={preview} />
+      <RiderSwitch bike={bike} rider={rider} preview={preview} />
     </group>
   );
 }
 
-// ---------------------------------------------------------------- real model
+// ---------------------------------------------------------------- real bike model
 function GlbBike({
   bike,
   rider,
@@ -348,64 +457,10 @@ function GlbBike({
         </group>
       </group>
 
-      {/* the rider sits on top, in world units (not affected by modelScale) */}
-      {!bike.noRider && <Rider bike={bike} rider={rider} preview={preview} />}
+      {/* the rider sits on top, in world units (not affected by the bike's modelScale) */}
+      {!bike.noRider && <RiderSwitch bike={bike} rider={rider} preview={preview} />}
     </group>
   );
-}
-
-// Checks that a model file exists before trying to load it.
-// A missing file means "use the built-in bike", with no error overlay.
-const fileExists = new Map<string, boolean>();
-
-function useFileExists(url?: string): boolean | null {
-  const [ok, setOk] = useState<boolean | null>(
-    url ? fileExists.get(url) ?? null : false
-  );
-
-  useEffect(() => {
-    if (!url) {
-      setOk(false);
-      return;
-    }
-    const cached = fileExists.get(url);
-    if (cached !== undefined) {
-      setOk(cached);
-      return;
-    }
-    let live = true;
-    fetch(url)
-      .then((r) => {
-        const type = r.headers.get("content-type") ?? "";
-        const good = r.ok && !type.includes("text/html");
-        r.body?.cancel(); // we only wanted the status; useGLTF downloads it properly
-        fileExists.set(url, good);
-        if (live) setOk(good);
-      })
-      .catch(() => {
-        fileExists.set(url, false);
-        if (live) setOk(false);
-      });
-    return () => {
-      live = false;
-    };
-  }, [url]);
-
-  return ok;
-}
-
-// Last line of defence for a file that exists but is corrupt.
-class Boundary extends Component<
-  { fallback: ReactNode; children: ReactNode },
-  { failed: boolean }
-> {
-  state = { failed: false };
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-  render() {
-    return this.state.failed ? this.props.fallback : this.props.children;
-  }
 }
 
 // ---------------------------------------------------------------- public
