@@ -12,7 +12,7 @@ import {
 } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Clone, useAnimations, useGLTF } from "@react-three/drei";
-import { Group, Object3D, Quaternion, Vector3 } from "three";
+import { Box3, Group, Object3D, Quaternion, Vector3 } from "three";
 import { runtime } from "@/game/runtime";
 import { useGameStore } from "@/store/useGameStore";
 import { getBike, getCharacter, type BikeDef, type CharacterDef } from "@/game/catalog";
@@ -277,6 +277,9 @@ function GlbRider({ bike, rider }: { bike: BikeDef; rider: CharacterDef }) {
   const { actions, names } = useAnimations(animations, root);
   const k = useMemo(() => keyPoints(bike), [bike]);
 
+  // lowest point of the model, so the feet can be put on the pedals
+  const minY = useMemo(() => new Box3().setFromObject(scene).min.y, [scene]);
+
   useEffect(() => {
     const name = rider.anim && names.includes(rider.anim) ? rider.anim : names[0];
     const a = name ? actions[name] : null;
@@ -286,15 +289,19 @@ function GlbRider({ bike, rider }: { bike: BikeDef; rider: CharacterDef }) {
     };
   }, [actions, names, rider.anim]);
 
-  // origin of the model = the saddle of the current bike
+  const s = rider.modelScale ?? 1;
   const [ox, oy, oz] = rider.offset ?? [0, 0, 0];
   const base = bike.riderOffset ?? [0, 0, 0];
 
   return (
     <group
-      position={[base[0] + ox, base[1] + k.SEAT[1] + oy, base[2] + k.SEAT[2] + oz]}
+      position={[
+        base[0] + ox,
+        base[1] + k.BB[1] - minY * s + oy, // feet at pedal height, then your nudge
+        base[2] + k.SEAT[2] + oz,
+      ]}
       rotation={[0, rider.modelRotY ?? 0, 0]}
-      scale={rider.modelScale ?? 1}
+      scale={s}
     >
       <group ref={root}>
         <Clone object={scene} />
