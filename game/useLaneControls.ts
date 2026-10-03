@@ -44,28 +44,28 @@ export function useLaneControls() {
       }
     };
 
-    let startX = 0;
+        let startX = 0;
     let startY = 0;
     let active = false;
+    let used = false; // one action per swipe
 
     const onDown = (e: PointerEvent) => {
       active = true;
+      used = false;
       startX = e.clientX;
       startY = e.clientY;
     };
     const onMove = (e: PointerEvent) => {
-      if (!active) return;
+      if (!active || used) return;
       const dx = e.clientX - startX;
       const dy = e.clientY - startY;
 
       if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy)) {
         move(dx > 0 ? 1 : -1);
-        startX = e.clientX;
-        startY = e.clientY;
+        used = true;
       } else if (dy < -SWIPE_THRESHOLD && Math.abs(dy) > Math.abs(dx)) {
         jump(); // swipe up
-        startX = e.clientX;
-        startY = e.clientY;
+        used = true;
       }
     };
     const onUp = () => {

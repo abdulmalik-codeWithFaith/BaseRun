@@ -21,8 +21,8 @@ export default function Player() {
 
     if (crashed) {
       runtime.velX = 0;
-      l.rotation.z = MathUtils.damp(l.rotation.z, runtime.crashSide * 1.45, 8, dt);
-      l.rotation.y = MathUtils.damp(l.rotation.y, runtime.crashSide * 0.5, 6, dt);
+          l.rotation.z = MathUtils.damp(l.rotation.z, MathUtils.clamp(-runtime.velX * 0.07, -0.35, 0.35), 8, dt);
+    l.rotation.y = MathUtils.damp(l.rotation.y, MathUtils.clamp(-runtime.velX * 0.045, -0.25, 0.25), 8, dt);
       l.rotation.x = MathUtils.damp(l.rotation.x, 0, 8, dt);
       l.position.y = MathUtils.damp(l.position.y, 0.35, 8, dt);
       return;

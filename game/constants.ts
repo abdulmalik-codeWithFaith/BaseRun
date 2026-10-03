@@ -49,9 +49,8 @@ export const START_SPEED = 8;        // u/s at the start of a run
 export const SPEED_PER_M = 0.0065;   // speed gained per meter (hits MAX_SPEED around 3.4 km)
 export const SPEED_ACCEL = 1.6;      // how quickly speed chases its target (lower = lazier)
 
-export const LANE_STIFFNESS = 100;   // lane spring: higher = snappier
-export const LANE_DAMPING = 20;      // keep ~ 2*sqrt(STIFFNESS) for no overshoot
-
+export const LANE_STIFFNESS = 42;   // was 100
+export const LANE_DAMPING = 13;     // keep ≈ 2 × √STIFFNESS
 export const SCENERY_POOL = 48;
 export const SCENERY_DESPAWN = 10;
 export const SCENERY_SPAWN_Z = -115;
