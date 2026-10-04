@@ -140,4 +140,4 @@ Vercel serves HTTPS, which service workers and installation require. Bump `VERSI
 - Accounts and online leaderboards
 
 ## Author
-Abdulrosheed Abdulmalik(codeWithFaith001).
+Abdulrosheed Abdulmalik(codeWithFaith001)
