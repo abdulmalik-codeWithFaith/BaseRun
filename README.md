@@ -138,3 +138,6 @@ Vercel serves HTTPS, which service workers and installation require. Bump `VERSI
 - Themed environments (city, village, desert)
 - Real GLB models
 - Accounts and online leaderboards
+
+## Author
+Abdulrosheed Abdulmalik(codeWithFaith001)
